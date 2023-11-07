@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Launch Chrome",
+            "request": "launch",
+            "type": "chrome",
+            "url": "https://www.google.com",
+            "runtimeArgs": [
+                "--load-extension=${workspaceFolder}/dist"
+            ],
+            "webRoot": "${workspaceFolder}",
+            "smartStep": true,
+            "showAsyncStacks": true,
+            "sourceMaps": true
+        }
+    ]
+}
