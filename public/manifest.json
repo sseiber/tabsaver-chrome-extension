@@ -40,7 +40,9 @@
         "tabs",
         "activeTab",
         "scripting",
-        "storage"
+        "contextMenus",
+        "clipboardRead",
+        "clipboardWrite"
     ],
     "host_permissions": [
         "<all_urls>"
