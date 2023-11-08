@@ -1,18 +1,30 @@
-chrome.runtime.onMessage.addListener(async function (req, sender, sendResponse) {
-    if (req.color) {
-        console.log("Receive color = " + req.color);
-        document.body.style.backgroundColor = req.color;
-        sendResponse("Change color to " + req.color);
-    }
-    else if (req.message === "copyText") {
-        await navigator.clipboard.writeText("data from extension");
+import { ISendMessageResponse } from "./tabSaverTypes";
 
-        sendResponse("copied text to clipboard");
+chrome.runtime.onMessage.addListener(async (message, _sender, sendResponse) => {
+    const response: ISendMessageResponse = {
+        success: true,
+        message: ""
+    };
+
+    switch (message.request) {
+        case "tabConfiguration":
+            response.message = `Received tab configuration`;
+
+            console.log(response.message);
+            console.log(JSON.stringify(message.data, null, 4));
+            break;
+
+        case "tabData":
+            response.message = `Received tab data`;
+
+            console.log(response.message);
+            console.log(JSON.stringify(message.tab, null, 4));
+            break;
+
+        default:
+            response.success = false;
+            response.message = `Unknown message: ${message.request}`;
     }
-    else if (req.message === "fileData") {
-        sendResponse(`fileData: ${req.data.text}`);
-    }
-    else {
-        sendResponse("Color message is none.");
-    }
+
+    sendResponse(response);
 });

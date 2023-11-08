@@ -1,4 +1,4 @@
-async function polling() {
+const polling = async () => {
     const storageEstimate = await navigator.storage.estimate();
     console.log(`Using ${storageEstimate.usage} out of ${storageEstimate.quota} bytes.`);
 

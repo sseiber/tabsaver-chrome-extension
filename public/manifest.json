@@ -39,10 +39,7 @@
     "permissions": [
         "tabs",
         "activeTab",
-        "scripting",
-        "contextMenus",
-        "clipboardRead",
-        "clipboardWrite"
+        "scripting"
     ],
     "host_permissions": [
         "<all_urls>"

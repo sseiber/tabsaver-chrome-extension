@@ -1,19 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Button } from 'semantic-ui-react';
+import { Button, Message, Segment } from 'semantic-ui-react';
 
 const Popup = () => {
-    const [count, setCount] = useState(0);
     const [currentTabId, setCurrentTabId] = useState(0);
     const [currentURL, setCurrentURL] = useState("");
     const [fileData, setFileData] = useState("");
 
     useEffect(() => {
-        chrome.action.setBadgeText({ text: count.toString() });
-    }, [count]);
-
-    useEffect(() => {
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             setCurrentTabId(tabs[0].id || 0);
             setCurrentURL(tabs[0].url || "");
         });
@@ -21,60 +16,40 @@ const Popup = () => {
 
     useEffect(() => {
         if (currentTabId) {
-            chrome.tabs.sendMessage(
-                currentTabId,
-                {
-                    message: "fileData",
-                    data: {
-                        field1: "value1",
-                        field2: "value2",
-                        text: fileData
-                    },
-                },
-                sendMessageResponse
-            );
+            const sendMessage = async () => {
+                const response = await sendMessageAsync(currentTabId, {
+                    request: "tabConfiguration",
+                    data: fileData
+                });
+
+                console.log(response.message);
+            };
+
+            sendMessage();
         }
-    }, [fileData])
+    }, [fileData]);
 
-    const sendMessageResponse = (msg: any) => {
-        console.log("result message:", msg);
+    const sendMessageAsync = async (tabId: number, message: any): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.tabs.sendMessage(
+                    tabId,
+                    message,
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            reject(chrome.runtime.lastError);
+                        }
+                        else {
+                            resolve(response);
+                        }
+                    }
+                );
+            }
+            catch (ex) {
+                return reject(ex)
+            }
+        });
     }
-
-    const queryTabResponse = (tabs: any) => {
-        const tab = tabs[0];
-        if (tab.id) {
-            chrome.tabs.sendMessage(
-                tab.id,
-                {
-                    color: "#777777",
-                },
-                sendMessageResponse
-            );
-        }
-    }
-
-    const changeBackground = () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, queryTabResponse);
-    };
-
-    // const restoreTabData = async () => {
-    //     try {
-    //         const fileHandles = await chrome.windows.showOpenFilePicker({
-    //             startIn: "downloads",
-    //             description: "Text files",
-    //             accept: {
-    //                 "text/plain": [".txt"]
-    //             }
-    //         });
-    //         const fileHandle = fileHandles[0];
-    //         const filename = fileHandle.name;
-    //         const fd = await fileHandle.getFile();
-    //         const fileContent = await fd.text();
-    //     }
-    //     catch (ex) {
-    //         console.log(ex);
-    //     }
-    // }
 
     // const saveTabData = async () => {
     //     try {
@@ -102,28 +77,31 @@ const Popup = () => {
 
     const saveAllTabs = async () => {
         try {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-            chrome.tabs.sendMessage(
-                tabs[0].id!,
-                {
-                    message: "copyText",
-                },
-                sendMessageResponse
-            );
+            const windows = await chrome.windows.getAll({
+                populate: true,
+                windowTypes: ["normal"]
+            });
 
-            const browserWindows = await chrome.windows.getAll(
-                {
-                    populate: true,
-                    windowTypes: ["normal"]
+            for (const window of windows) {
+                const tabs = window.tabs || [];
+                for (const tab of tabs) {
+                    if (tab.url && tab.id) {
+                        const response = await sendMessageAsync(tab.id, {
+                            request: "tabData",
+                            tab
+                        });
+
+                        console.log(response.message);
+                    }
                 }
-            )
+            }
         }
         catch (ex) {
-            console.log(ex);
+            console.log(`Error in saveTabs: ${(ex as Error).message}`);
         }
     }
 
-    const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const restoreTabs = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files![0];
         const reader = new FileReader();
         reader.addEventListener('load', (readerEvent) => {
@@ -136,41 +114,29 @@ const Popup = () => {
         reader.readAsText(file, 'UTF-8');
     }
 
-    // const testAction = async () => {
-    //     const el = document.createElement('textarea');
-    //     el.value = "data from extension";
-    //     el.setAttribute('readonly', '');
-    //     el.style.position = 'absolute';
-    //     el.style.left = '-9999px';
-    //     document.body.appendChild(el);
-    //     el.select();
-    //     document.execCommand('copy');
-    //     document.body.removeChild(el);
-    // }
-
     return (
-        <>
+        <Segment>
+            <Message>
+                <Message.Header>Tab Saver</Message.Header>
+                <p>
+                    Select the option below to restore or save all tabs in all open windows.
+                </p>
+            </Message>
+            {/*
             <ul style={{ minWidth: "700px" }}>
                 <li>Current URL: {currentURL}</li>
                 <li>Current Time: {new Date().toLocaleTimeString()}</li>
             </ul>
+            */}
+
+            <input type="file" accept="text/*" id="fileInput" hidden onChange={restoreTabs} />
+            <Button size="tiny" color="green" as="label" htmlFor="fileInput">
+                Restore Tabs
+            </Button>
             <Button size="tiny" color="green" onClick={saveAllTabs}>
-                Save All Tabs
+                Save Tabs
             </Button>
-
-            <button
-                onClick={() => setCount(count + 1)}
-                style={{ marginRight: "5px" }}
-            >
-                count up
-            </button>
-            <button onClick={changeBackground}>change background</button>
-
-            <Button size="tiny" color="green" as="label" htmlFor="file" type="button">
-                Input Button Test
-            </Button>
-            <input type="file" accept="text/*" id="file" hidden onChange={handleFileInput} />
-        </>
+        </Segment>
     );
 };
 
