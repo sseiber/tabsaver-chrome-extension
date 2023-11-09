@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
-    "name": "React Chrome Extension",
-    "description": "Chrome Extension, TypeScript, Visual Studio Code",
+    "name": "TabSaver Chrome Extension",
+    "description": "Chrome/Edge Extension to save and restore tabs on all windows",
     "version": "1.0",
     "options_ui": {
         "page": "options.html"
@@ -13,10 +13,10 @@
             "32": "/images/icon32.png",
             "128": "/images/icon128.png"
         },
-        "default_title": "React Chrome Extension",
+        "default_title": "TabSaver Chrome Extension",
         "default_popup": "popup.html"
     },
-    "icon": {
+    "icons": {
         "16": "/images/icon16.png",
         "24": "/images/icon24.png",
         "32": "/images/icon32.png",

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Button, Message, Segment } from 'semantic-ui-react';
+import { saveAs } from 'file-saver';
+import { ISendMessageRequest, ISendMessageResponse } from "./common";
 
 const Popup = () => {
     const [currentTabId, setCurrentTabId] = useState(0);
     const [currentURL, setCurrentURL] = useState("");
-    const [fileData, setFileData] = useState("");
 
     useEffect(() => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -13,43 +14,6 @@ const Popup = () => {
             setCurrentURL(tabs[0].url || "");
         });
     }, []);
-
-    useEffect(() => {
-        if (currentTabId) {
-            const sendMessage = async () => {
-                const response = await sendMessageAsync(currentTabId, {
-                    request: "tabConfiguration",
-                    data: fileData
-                });
-
-                console.log(response.message);
-            };
-
-            sendMessage();
-        }
-    }, [fileData]);
-
-    const sendMessageAsync = async (tabId: number, message: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            try {
-                chrome.tabs.sendMessage(
-                    tabId,
-                    message,
-                    (response) => {
-                        if (chrome.runtime.lastError) {
-                            reject(chrome.runtime.lastError);
-                        }
-                        else {
-                            resolve(response);
-                        }
-                    }
-                );
-            }
-            catch (ex) {
-                return reject(ex)
-            }
-        });
-    }
 
     // const saveTabData = async () => {
     //     try {
@@ -77,41 +41,44 @@ const Popup = () => {
 
     const saveAllTabs = async () => {
         try {
-            const windows = await chrome.windows.getAll({
-                populate: true,
-                windowTypes: ["normal"]
+            const response = await chrome.runtime.sendMessage<ISendMessageRequest, ISendMessageResponse>({
+                request: "saveAllTabs"
             });
 
-            for (const window of windows) {
-                const tabs = window.tabs || [];
-                for (const tab of tabs) {
-                    if (tab.url && tab.id) {
-                        const response = await sendMessageAsync(tab.id, {
-                            request: "tabData",
-                            tab
-                        });
-
-                        console.log(response.message);
-                    }
-                }
-            }
+            const file = new File([(response as any).data], "hello world.txt", { type: "text/plain;charset=utf-8" });
+            saveAs(file);
         }
         catch (ex) {
             console.log(`Error in saveTabs: ${(ex as Error).message}`);
         }
     }
 
-    const restoreTabs = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files![0];
-        const reader = new FileReader();
-        reader.addEventListener('load', (readerEvent) => {
-            let data = readerEvent.target?.result;
-            if (data instanceof ArrayBuffer) {
-                data = new TextDecoder("utf-8").decode(data);
-            }
-            setFileData(data || "");
-        });
-        reader.readAsText(file, 'UTF-8');
+    const restoreTabs = async (inputElementEvent: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            const tabConfigFile = inputElementEvent.target.files![0];
+            const reader = new FileReader();
+
+            const fileData = await new Promise<string>((resolve, reject) => {
+                reader.addEventListener('load', (readerEvent) => {
+                    let data = readerEvent.target?.result;
+                    if (data instanceof ArrayBuffer) {
+                        data = new TextDecoder("utf-8").decode(data);
+                    }
+
+                    return resolve(data as string);
+                });
+
+                reader.readAsText(tabConfigFile, 'UTF-8');
+            });
+
+            const response = await chrome.runtime.sendMessage<ISendMessageRequest, ISendMessageResponse>({
+                request: "restoreAllTabs",
+                data: fileData
+            });
+        }
+        catch (ex) {
+            console.log(`Error in restoreTabs: ${(ex as Error).message}`);
+        }
     }
 
     return (
