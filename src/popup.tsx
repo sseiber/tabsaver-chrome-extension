@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Button, Message, Segment } from 'semantic-ui-react';
+import { Button, Divider, Form, Message, Segment } from 'semantic-ui-react';
 import { saveAs } from 'file-saver';
 import { ISendMessageRequest, ISendMessageResponse } from "./common";
 
 const Popup = () => {
     const [currentTabId, setCurrentTabId] = useState(0);
     const [currentURL, setCurrentURL] = useState("");
+    const [savedTabsFilename, setSavedTabsFilename] = useState("");
 
     useEffect(() => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -15,37 +16,13 @@ const Popup = () => {
         });
     }, []);
 
-    // const saveTabData = async () => {
-    //     try {
-    //         const fileHandle = await window.showSaveFilePicker({
-    //             types: [
-    //                 {
-    //                     description: "Text files",
-    //                     accept: {
-    //                         "text/plain": [".txt"]
-    //                     }
-    //                 }
-    //             ],
-    //             suggestedName: "Untitled.txt"
-    //         });
-    //         const writableStream = await fileHandle.createWritable();
-    //         await writableStream.write("Hello World");
-    //         await writableStream.close();
-
-    //         const filename = fileHandle.name;
-    //     }
-    //     catch (ex) {
-    //         console.log(ex);
-    //     }
-    // }
-
     const saveAllTabs = async () => {
         try {
             const response = await chrome.runtime.sendMessage<ISendMessageRequest, ISendMessageResponse>({
                 request: "saveAllTabs"
             });
 
-            const file = new File([(response as any).data], "hello world.txt", { type: "text/plain;charset=utf-8" });
+            const file = new File([(response as any).data], `${savedTabsFilename}.json`, { type: "application/json;charset=utf-8" });
             saveAs(file);
         }
         catch (ex) {
@@ -58,7 +35,7 @@ const Popup = () => {
             const tabConfigFile = inputElementEvent.target.files![0];
             const reader = new FileReader();
 
-            const fileData = await new Promise<string>((resolve, reject) => {
+            const fileData = await new Promise<string>((resolve) => {
                 reader.addEventListener('load', (readerEvent) => {
                     let data = readerEvent.target?.result;
                     if (data instanceof ArrayBuffer) {
@@ -81,6 +58,10 @@ const Popup = () => {
         }
     }
 
+    const handleSavedTabsFilenameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setSavedTabsFilename(event.target.value);
+    }
+
     return (
         <Segment>
             <Message>
@@ -89,14 +70,15 @@ const Popup = () => {
                     Select the option below to restore or save all tabs in all open windows.
                 </p>
             </Message>
-            {/*
-            <ul style={{ minWidth: "700px" }}>
-                <li>Current URL: {currentURL}</li>
-                <li>Current Time: {new Date().toLocaleTimeString()}</li>
-            </ul>
-            */}
 
-            <input type="file" accept="text/*" id="fileInput" hidden onChange={restoreTabs} />
+            <Form>
+                <Form.Field>
+                    <label>Saved tabs filename</label>
+                    <input placeholder='browser-tabs' value={savedTabsFilename} onChange={handleSavedTabsFilenameChange} />
+                </Form.Field>
+            </Form>
+            <Divider hidden />
+            <input type="file" accept="application/json" id="fileInput" hidden onChange={restoreTabs} />
             <Button size="tiny" color="green" as="label" htmlFor="fileInput">
                 Restore Tabs
             </Button>

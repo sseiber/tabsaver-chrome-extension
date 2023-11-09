@@ -89,11 +89,14 @@ const saveAllTabs = async (): Promise<string> => {
 const restoreAllTabs = async (fileData: string): Promise<void> => {
     try {
         const savedTabsMap = new Map<number, ISavedTab[]>(JSON.parse(fileData));
-        const foo = 5;
 
-        await chrome.windows.create({
-            url: savedTabsMap.get(0)?.map(tab => tab.url) || []
-        });
+        for (const [windowIndex, savedTabs] of savedTabsMap.entries()) {
+            await chrome.windows.create({
+                url: savedTabsMap.get(windowIndex)?.map(savedTabs => savedTabs.url) || []
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
     }
     catch (ex) {
         console.log(`Error in restoreTabs: ${(ex as Error).message}`);
